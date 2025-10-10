@@ -5,7 +5,6 @@ import CartDrawer from "../../components/cart-drawer"
 import LoginModal from "../../components/login-modal"
 import { UIProvider } from "../../components/cart-ui-context"
 import ProductCard from "../../components/product-card"
-import { getFirebase } from "../../lib/firebase"
 
 const fallback = [
   {
@@ -42,31 +41,8 @@ export default function ShopPage() {
   const [products, setProducts] = useState(fallback)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { db } = getFirebase()
-        if (!db) return
-        const { collection, getDocs } = require("firebase/firestore")
-        const snap = await getDocs(collection(db, "products"))
-        let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-        
-        // Filter to keep only honey products
-        items = items.filter((item) => 
-          item.name && item.name.toLowerCase().includes("honey")
-        )
-        
-        // Ensure all items have proper imageUrl
-        items = items.map((item) => ({
-          ...item,
-          imageUrl: item.imageUrl || "https://images.unsplash.com/photo-1587049352846-4a222e784720?w=500&q=80"
-        }))
-        
-        if (items.length) setProducts(items)
-      } catch (e) {
-        console.warn("[v0] Using fallback product list", e)
-      }
-    }
-    load()
+    // Use fallback products for frontend-only deployment
+    setProducts(fallback)
   }, [])
 
   return (

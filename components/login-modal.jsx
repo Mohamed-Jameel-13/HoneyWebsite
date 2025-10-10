@@ -1,7 +1,7 @@
 "use client"
 import { useUI } from "./cart-ui-context"
 import { useEffect, useRef, useState } from "react"
-import { getFirebase } from "../lib/firebase"
+import { setMockUser } from "../lib/firebase"
 
 export default function LoginModal() {
   const { authOpen, closeAuth } = useUI()
@@ -22,15 +22,18 @@ export default function LoginModal() {
   }, [authOpen])
 
   async function signInWithGoogle() {
-    const { auth, googleProvider } = getFirebase()
-    if (!auth || !googleProvider) {
-      setError("Authentication not configured.")
-      return
-    }
     setLoading(true)
     try {
-      const { signInWithPopup } = require("firebase/auth")
-      await signInWithPopup(auth, googleProvider)
+      // Mock Google sign-in
+      const mockUser = {
+        uid: 'mock-user-' + Date.now(),
+        email: 'user@example.com',
+        displayName: 'Mock User',
+        photoURL: '/placeholder-user.jpg'
+      }
+      setMockUser(mockUser)
+      // Trigger storage event to update navbar
+      window.dispatchEvent(new Event('storage'))
       closeAuth()
     } catch (e) {
       setError(e?.message || "Google sign-in failed")
@@ -40,20 +43,10 @@ export default function LoginModal() {
   }
 
   async function sendOtp() {
-    const { auth } = getFirebase()
-    if (!auth) {
-      setError("Authentication not configured.")
-      return
-    }
     setLoading(true)
     try {
-      const { RecaptchaVerifier, signInWithPhoneNumber } = require("firebase/auth")
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current, {
-          size: "invisible",
-        })
-      }
-      window.confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier)
+      // Mock OTP sending
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
       setStage("code")
     } catch (e) {
       setError(e?.message || "Failed to send OTP")
@@ -65,8 +58,20 @@ export default function LoginModal() {
   async function confirmOtp() {
     setLoading(true)
     try {
-      await window.confirmationResult.confirm(otp)
-      closeAuth()
+      // Mock OTP verification - accept any 6-digit code
+      if (otp.length === 6) {
+        const mockUser = {
+          uid: 'mock-user-' + Date.now(),
+          phoneNumber: phone,
+          displayName: 'Phone User'
+        }
+        setMockUser(mockUser)
+        // Trigger storage event to update navbar
+        window.dispatchEvent(new Event('storage'))
+        closeAuth()
+      } else {
+        throw new Error('Please enter a 6-digit code')
+      }
     } catch (e) {
       setError(e?.message || "Invalid code")
     } finally {

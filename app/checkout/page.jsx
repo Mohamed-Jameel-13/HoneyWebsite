@@ -5,8 +5,7 @@ import CartDrawer from "../../components/cart-drawer"
 import LoginModal from "../../components/login-modal"
 import { UIProvider } from "../../components/cart-ui-context"
 import { useCart } from "../../lib/cart-store"
-import { getFirebase } from "../../lib/firebase"
-import Razorpay from "razorpay" // Declare the Razorpay variable
+import Link from "next/link"
 
 export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart()
@@ -14,7 +13,7 @@ export default function CheckoutPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
-  const [rzpReady, setRzpReady] = useState(false)
+  const [paymentReady, setPaymentReady] = useState(true)
 
   const [addr, setAddr] = useState({
     fullName: "",
@@ -26,48 +25,23 @@ export default function CheckoutPage() {
     save: true,
   })
 
-  useEffect(() => {
-    // Load Razorpay script
-    const s = document.createElement("script")
-    s.src = "https://checkout.razorpay.com/v1/checkout.js"
-    s.async = true
-    s.onload = () => setRzpReady(true)
-    document.body.appendChild(s)
-    return () => {
-      document.body.removeChild(s)
-    }
-  }, [])
+  // Remove Razorpay script loading for frontend-only deployment
 
   async function saveAddressIfNeeded() {
     if (!addr.save) return
     try {
-      const { db, auth } = getFirebase()
-      if (!db || !auth) return
-      const { onAuthStateChanged } = require("firebase/auth")
-      const { doc, setDoc } = require("firebase/firestore")
-      await new Promise((resolve) =>
-        onAuthStateChanged(auth, async (user) => {
-          if (user) {
-            await setDoc(
-              doc(db, "users", user.uid),
-              {
-                addresses: [
-                  {
-                    fullName: addr.fullName,
-                    street: addr.street,
-                    city: addr.city,
-                    state: addr.state,
-                    postalCode: addr.postalCode,
-                    phone: addr.phone,
-                  },
-                ],
-              },
-              { merge: true },
-            )
-          }
-          resolve(true)
-        }),
-      )
+      // Mock address saving to localStorage
+      const savedAddresses = JSON.parse(localStorage.getItem('savedAddresses') || '[]')
+      const newAddress = {
+        fullName: addr.fullName,
+        street: addr.street,
+        city: addr.city,
+        state: addr.state,
+        postalCode: addr.postalCode,
+        phone: addr.phone,
+      }
+      savedAddresses.push(newAddress)
+      localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses))
     } catch (e) {
       console.warn("[v0] Failed to save address", e)
     }
@@ -75,50 +49,13 @@ export default function CheckoutPage() {
 
   async function placeOrder() {
     setError("")
-    if (!rzpReady) {
-      setError("Payment not ready, please wait a moment.")
-      return
-    }
     try {
-      // Create Razorpay order on server
-      const res = await fetch("/api/razorpay/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Math.round(subtotal * 100), // paise
-          currency: "USD",
-          receipt: "gh_" + Date.now(),
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Order failed")
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_key",
-        amount: data.amount,
-        currency: data.currency,
-        name: "The Golden Hive",
-        description: "Honey order",
-        order_id: data.id,
-        prefill: {
-          name: addr.fullName,
-          contact: addr.phone,
-        },
-        notes: {
-          address: `${addr.street}, ${addr.city} ${addr.state} ${addr.postalCode}`,
-        },
-        handler: (response) => {
-          // Success
-          clear()
-          setStep(3)
-        },
-        theme: {
-          color: "#FFB300",
-        },
-      }
-
-      const rzp = new Razorpay(options) // Use the declared Razorpay variable
-      rzp.open()
+      // Mock payment process for demo
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate payment processing
+      
+      // Simulate successful payment
+      clear()
+      setStep(3)
     } catch (e) {
       setError(e.message || "Payment failed")
     }
@@ -237,7 +174,7 @@ export default function CheckoutPage() {
                 onClick={placeOrder}
                 className="mt-6 w-full rounded-md bg-primary px-4 py-3 sm:py-4 text-sm sm:text-base font-medium text-primary-foreground hover:opacity-90 transition-opacity"
               >
-                Pay with Razorpay
+                Place Order (Demo)
               </button>
               {error && (
                 <div className="mt-4 rounded-md bg-destructive/10 p-3 sm:p-4 text-sm sm:text-base text-destructive">

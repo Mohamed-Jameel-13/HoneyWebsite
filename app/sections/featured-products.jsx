@@ -1,7 +1,6 @@
 "use client"
 import { useEffect, useState, useRef } from "react"
 import ProductCard from "../../components/product-card"
-import { getFirebase } from "../../lib/firebase"
 
 const fallback = [
   {
@@ -40,31 +39,8 @@ export default function FeaturedProducts() {
   const sectionRef = useRef(null)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { db } = getFirebase()
-        if (!db) return
-        const { collection, query, limit, getDocs } = require("firebase/firestore")
-        const snap = await getDocs(query(collection(db, "products"), limit(8)))
-        let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-        
-        // Filter to keep only honey products
-        items = items.filter((item) => 
-          item.name && item.name.toLowerCase().includes("honey")
-        )
-        
-        // Ensure all items have proper imageUrl
-        items = items.map((item) => ({
-          ...item,
-          imageUrl: item.imageUrl || "/placeholder.jpg"
-        }))
-        
-        if (items.length) setProducts(items.slice(0, 4))
-      } catch (e) {
-        console.warn("[v0] Using fallback featured products", e)
-      }
-    }
-    load()
+    // Use fallback products for frontend-only deployment
+    setProducts(fallback)
   }, [])
 
   useEffect(() => {

@@ -1,14 +1,33 @@
 "use client"
 import { useCart } from "../lib/cart-store"
+import { useUI } from "./cart-ui-context"
+import { getCurrentUser, initMockAuth } from "../lib/firebase"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCart()
+  const { openAuth } = useUI()
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    initMockAuth()
+    setUser(getCurrentUser())
+  }, [])
 
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    
+    // Check if user is logged in
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      // Redirect to login if not authenticated
+      openAuth()
+      return
+    }
+    
     addItem(product, 1)
   }
 

@@ -2,13 +2,34 @@
 import Link from "next/link"
 import { useUI } from "./cart-ui-context"
 import { useCart } from "../lib/cart-store"
-import { useState } from "react"
+import { getCurrentUser, clearMockUser, initMockAuth } from "../lib/firebase"
+import { useState, useEffect } from "react"
 
 export default function Navbar() {
   const { toggleCart, openAuth } = useUI()
   const { items } = useCart()
   const count = items.reduce((n, i) => n + i.quantity, 0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    initMockAuth()
+    setUser(getCurrentUser())
+    
+    // Listen for auth state changes
+    const checkAuth = () => {
+      setUser(getCurrentUser())
+    }
+    
+    window.addEventListener('storage', checkAuth)
+    return () => window.removeEventListener('storage', checkAuth)
+  }, [])
+
+  const handleLogout = () => {
+    clearMockUser()
+    setUser(null)
+    setMobileMenuOpen(false)
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-transparent backdrop-blur-md border-b border-foreground/10">
@@ -69,13 +90,28 @@ export default function Navbar() {
                 </span>
               )}
             </button>
-            <button
-              onClick={openAuth}
-              className="hidden sm:inline-flex px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
-              aria-label="Sign in to your account"
-            >
-              Sign In
-            </button>
+            {user ? (
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {user.displayName || user.email || 'User'}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
+                  aria-label="Sign out"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={openAuth}
+                className="hidden sm:inline-flex px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
+                aria-label="Sign in to your account"
+              >
+                Sign In
+              </button>
+            )}
             
             {/* Mobile menu button */}
             <button
@@ -127,15 +163,29 @@ export default function Navbar() {
             >
               Contact
             </Link>
-            <button
-              onClick={() => {
-                openAuth()
-                setMobileMenuOpen(false)
-              }}
-              className="block w-full text-left py-2 text-base font-medium hover:text-primary transition-colors sm:hidden"
-            >
-              Sign In
-            </button>
+            {user ? (
+              <div className="sm:hidden space-y-2">
+                <div className="py-2 text-base text-muted-foreground">
+                  {user.displayName || user.email || 'User'}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left py-2 text-base font-medium hover:text-primary transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  openAuth()
+                  setMobileMenuOpen(false)
+                }}
+                className="block w-full text-left py-2 text-base font-medium hover:text-primary transition-colors sm:hidden"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         )}
       </nav>

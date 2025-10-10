@@ -7,7 +7,7 @@ import CartDrawer from "../../../components/cart-drawer"
 import LoginModal from "../../../components/login-modal"
 import { UIProvider, useUI } from "../../../components/cart-ui-context"
 import { useCart } from "../../../lib/cart-store"
-import { getFirebase } from "../../../lib/firebase"
+import { getCurrentUser, initMockAuth } from "../../../lib/firebase"
 
 const fallbackProducts = [
   {
@@ -83,7 +83,7 @@ function ProductDetailContent() {
   const params = useParams()
   const router = useRouter()
   const { addItem } = useCart()
-  const { openCart } = useUI()
+  const { openCart, openAuth } = useUI()
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
   const [quantity, setQuantity] = useState(1)
@@ -93,22 +93,7 @@ function ProductDetailContent() {
     async function loadProduct() {
       const productId = params.id
       
-      // Try to load from Firebase first
-      try {
-        const { db } = getFirebase()
-        if (db) {
-          const { doc, getDoc } = require("firebase/firestore")
-          const snap = await getDoc(doc(db, "products", productId))
-          if (snap.exists()) {
-            setProduct({ id: snap.id, ...snap.data() })
-            return
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to load from Firebase", e)
-      }
-
-      // Fallback to local data
+      // Use fallback data for frontend-only deployment
       const found = fallbackProducts.find(p => p.id === productId)
       if (found) {
         setProduct(found)
@@ -120,6 +105,14 @@ function ProductDetailContent() {
   }, [params.id])
 
   const handleAddToCart = () => {
+    // Check if user is logged in
+    const currentUser = getCurrentUser()
+    if (!currentUser) {
+      // Redirect to login if not authenticated
+      openAuth()
+      return
+    }
+    
     if (product) {
       addItem(product, quantity)
       openCart()
