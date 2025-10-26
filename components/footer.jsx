@@ -13,7 +13,7 @@ export default function Footer() {
               <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-2xl text-primary-foreground">🐝</span>
               </div>
-              <h3 className="text-xl font-serif font-semibold">The Golden Hive</h3>
+              <h3 className="text-xl font-serif font-semibold">Thaenveedu</h3>
             </div>
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-md">
               Crafting artisanal honey with care and dedication. From our sustainable hives to your table, 
@@ -117,12 +117,12 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground text-center sm:text-left">
-            © {currentYear} The Golden Hive. All rights reserved.
+            © {currentYear} Thaenveedu. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-primary transition-colors">Shipping Info</a>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+            <Link href="/admin" className="hover:text-primary transition-colors">Admin</Link>
           </div>
         </div>
       </div>

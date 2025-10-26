@@ -19,9 +19,25 @@ yarn-error.log*
 # env files
 .env*
 
+# Firebase service account (NEVER COMMIT THIS!)
+serviceAccountKey.json
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# markdown files (except README)
+*.md
+!README.md
+!README*.md
+
+# Admin scripts and other unnecessary files
+set-admin-claim.js
+set-admin-simple.js
+*.bak
+*.tmp
+*.log
+.DS_Store

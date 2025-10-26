@@ -1,7 +1,8 @@
 "use client"
 import { useCart } from "../lib/cart-store"
 import { useUI } from "./cart-ui-context"
-import { getCurrentUser, initMockAuth } from "../lib/firebase"
+import { auth } from "../lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -12,8 +13,10 @@ export default function ProductCard({ product }) {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    initMockAuth()
-    setUser(getCurrentUser())
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+    })
+    return () => unsubscribe()
   }, [])
 
   const handleAddToCart = (e) => {
@@ -21,8 +24,7 @@ export default function ProductCard({ product }) {
     e.stopPropagation()
     
     // Check if user is logged in
-    const currentUser = getCurrentUser()
-    if (!currentUser) {
+    if (!user) {
       // Redirect to login if not authenticated
       openAuth()
       return
@@ -49,7 +51,7 @@ export default function ProductCard({ product }) {
           {product.description}
         </p>
         <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <span className="font-semibold text-xl sm:text-2xl">${product.price.toFixed(2)}</span>
+          <span className="font-semibold text-xl sm:text-2xl">₹{product.price.toFixed(2)}</span>
           <button
             onClick={handleAddToCart}
             className="w-full sm:w-auto rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm sm:text-base font-medium hover:opacity-90 transition-opacity active:scale-95 whitespace-nowrap"

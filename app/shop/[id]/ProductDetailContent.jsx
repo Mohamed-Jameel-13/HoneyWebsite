@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useUI } from "../../../components/cart-ui-context"
 import { useCart } from "../../../lib/cart-store"
-import { getCurrentUser, initMockAuth } from "../../../lib/firebase"
+import { auth } from "../../../lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
 
 const fallbackProducts = [
   {
@@ -78,12 +79,20 @@ const sampleReviews = {
 
 export default function ProductDetailContent({ productId }) {
   const router = useRouter()
-  const { addItem } = useCart()
+  const { addItem, items } = useCart()
   const { openCart, openAuth } = useUI()
   const [product, setProduct] = useState(null)
   const [reviews, setReviews] = useState([])
   const [quantity, setQuantity] = useState(1)
   const [activeTab, setActiveTab] = useState("description")
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+    })
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     // Use fallback data for frontend-only deployment
@@ -94,10 +103,13 @@ export default function ProductDetailContent({ productId }) {
     }
   }, [productId])
 
+  // Check if product is already in cart and show current quantity
+  const existingItem = items.find(item => item.id === productId)
+  const currentCartQuantity = existingItem ? existingItem.quantity : 0
+
   const handleAddToCart = () => {
     // Check if user is logged in
-    const currentUser = getCurrentUser()
-    if (!currentUser) {
+    if (!user) {
       // Redirect to login if not authenticated
       openAuth()
       return
@@ -106,6 +118,8 @@ export default function ProductDetailContent({ productId }) {
     if (product) {
       addItem(product, quantity)
       openCart()
+      // Reset quantity to 1 after adding
+      setQuantity(1)
     }
   }
 
@@ -162,7 +176,7 @@ export default function ProductDetailContent({ productId }) {
             </span>
           </div>
 
-          <p className="text-3xl font-bold mb-6">${product.price.toFixed(2)}</p>
+          <p className="text-3xl font-bold mb-6">₹{product.price.toFixed(2)}</p>
 
           <div className="space-y-3 mb-6">
             <div className="flex items-center gap-2 text-sm">
@@ -182,6 +196,17 @@ export default function ProductDetailContent({ productId }) {
           <p className="text-base text-muted-foreground mb-6">{product.description}</p>
 
           <div className="border-t pt-6 space-y-4">
+            {currentCartQuantity > 0 && (
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-md text-sm">
+                <p className="text-primary font-medium">
+                  ✓ Already in cart: {currentCartQuantity} item{currentCartQuantity > 1 ? 's' : ''}
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Adding {quantity} more will make it {currentCartQuantity + quantity} total
+                </p>
+              </div>
+            )}
+            
             <div className="flex items-center gap-4">
               <label className="font-medium">Quantity:</label>
               <div className="flex items-center gap-2 border rounded-md">
@@ -205,7 +230,7 @@ export default function ProductDetailContent({ productId }) {
               onClick={handleAddToCart}
               className="w-full bg-primary text-primary-foreground rounded-md px-6 py-3 font-medium hover:opacity-90 transition-opacity"
             >
-              Add to Cart - ${(product.price * quantity).toFixed(2)}
+              {currentCartQuantity > 0 ? 'Add More to Cart' : 'Add to Cart'} - ₹{(product.price * quantity).toFixed(2)}
             </button>
           </div>
 

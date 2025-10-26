@@ -5,15 +5,49 @@ import CartDrawer from "../../components/cart-drawer"
 import LoginModal from "../../components/login-modal"
 import { UIProvider } from "../../components/cart-ui-context"
 import { useCart } from "../../lib/cart-store"
+import { auth, db } from "../../lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
+import { doc, getDoc, setDoc, arrayUnion } from "firebase/firestore"
+import { createOrder } from "../../lib/order-service"
+import { validateOrderData, sanitizeInput } from "../../lib/security"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import Script from "next/script"
 
 export default function CheckoutPage() {
+  const router = useRouter()
   const { items, subtotal, clear } = useCart()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
-  const [paymentReady, setPaymentReady] = useState(true)
+  const [user, setUser] = useState(null)
+  const [orderId, setOrderId] = useState(null)
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false)
+  const [razorpayLoading, setRazorpayLoading] = useState(true)
+  const [showRetry, setShowRetry] = useState(false)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+      if (!currentUser && step > 1) {
+        router.push('/checkout')
+        setStep(1)
+      }
+    })
+    return () => unsubscribe()
+  }, [router, step])
+
+  // Set a timeout to show retry button if Razorpay doesn't load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!razorpayLoaded) {
+        setRazorpayLoading(false)
+        setShowRetry(true)
+      }
+    }, 10000) // 10 seconds timeout
+
+    return () => clearTimeout(timer)
+  }, [razorpayLoaded])
 
   const [addr, setAddr] = useState({
     fullName: "",
@@ -22,16 +56,53 @@ export default function CheckoutPage() {
     state: "",
     postalCode: "",
     phone: "",
+    email: "",
     save: true,
   })
+  const [validationErrors, setValidationErrors] = useState({})
 
-  // Remove Razorpay script loading for frontend-only deployment
+  // Load user data and saved addresses
+  useEffect(() => {
+    if (user) {
+      loadUserProfile()
+    }
+  }, [user])
+
+  async function loadUserProfile() {
+    if (!user) return
+    try {
+      const docRef = doc(db, 'users', user.uid)
+      const docSnap = await getDoc(docRef)
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        // Pre-fill form with user data if available
+        setAddr(prev => ({
+          ...prev,
+          fullName: prev.fullName || data.displayName || user.displayName || "",
+          email: prev.email || data.email || user.email || "",
+          phone: prev.phone || data.phone || user.phoneNumber || "",
+        }))
+        
+        // If user has saved addresses, pre-fill with the most recent one
+        if (data.addresses && data.addresses.length > 0) {
+          const lastAddress = data.addresses[data.addresses.length - 1]
+          setAddr(prev => ({
+            ...prev,
+            ...lastAddress,
+            save: true
+          }))
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user profile:", error)
+    }
+  }
 
   async function saveAddressIfNeeded() {
-    if (!addr.save) return
+    if (!addr.save || !user) return
     try {
-      // Mock address saving to localStorage
-      const savedAddresses = JSON.parse(localStorage.getItem('savedAddresses') || '[]')
+      const docRef = doc(db, 'users', user.uid)
       const newAddress = {
         fullName: addr.fullName,
         street: addr.street,
@@ -39,25 +110,135 @@ export default function CheckoutPage() {
         state: addr.state,
         postalCode: addr.postalCode,
         phone: addr.phone,
+        email: addr.email || user.email,
       }
-      savedAddresses.push(newAddress)
-      localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses))
+      
+      // Save to Firestore using arrayUnion to avoid duplicates
+      await setDoc(docRef, {
+        addresses: arrayUnion(newAddress),
+        displayName: addr.fullName,
+        phone: addr.phone,
+        updatedAt: new Date()
+      }, { merge: true })
     } catch (e) {
-      console.warn("[v0] Failed to save address", e)
+      console.warn("Failed to save address", e)
     }
   }
 
   async function placeOrder() {
     setError("")
+    setSaving(true)
+    
     try {
-      // Mock payment process for demo
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate payment processing
+      if (!user) {
+        throw new Error("Please sign in to place an order")
+      }
+
+      if (items.length === 0) {
+        throw new Error("Your cart is empty")
+      }
+
+      if (!razorpayLoaded) {
+        setError("Payment system is still loading. Please wait...")
+        setSaving(false)
+        return
+      }
+
+      // Sanitize inputs
+      const sanitizedAddress = {
+        fullName: sanitizeInput(addr.fullName),
+        street: sanitizeInput(addr.street),
+        city: sanitizeInput(addr.city),
+        state: sanitizeInput(addr.state),
+        postalCode: sanitizeInput(addr.postalCode),
+        phone: sanitizeInput(addr.phone),
+        email: sanitizeInput(addr.email || user.email)
+      }
+
+      // Create order data
+      const orderData = {
+        items: items.map(item => ({
+          id: item.id,
+          name: sanitizeInput(item.name),
+          price: parseFloat(item.price),
+          quantity: parseInt(item.quantity),
+          imageUrl: item.imageUrl
+        })),
+        subtotal: parseFloat(subtotal),
+        shippingAddress: sanitizedAddress
+      }
+
+      // Validate order data - display errors in UI instead of throwing
+      const validation = validateOrderData(orderData)
+      if (!validation.isValid) {
+        setError(validation.errors.join(', '))
+        setSaving(false)
+        return
+      }
+
+      // Initialize Razorpay
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: Math.round(subtotal * 100), // Razorpay expects amount in paise (multiply by 100)
+        currency: 'INR', // Changed to INR to enable UPI and other Indian payment methods
+        name: 'Thaenveedu',
+        description: 'Authentic Honey Purchase',
+        image: '/Honey1.avif',
+        handler: async function (response) {
+          // Payment successful
+          console.log('Payment successful:', response)
+          
+          try {
+            // Add payment info to order data
+            const orderDataWithPayment = {
+              ...orderData,
+              paymentId: response.razorpay_payment_id,
+              paymentStatus: 'completed'
+            }
+
+            // Create order in Firestore
+            const result = await createOrder(user.uid, orderDataWithPayment)
+            
+            if (result.success) {
+              setOrderId(result.orderId)
+              await saveAddressIfNeeded()
+              clear()
+              setStep(3)
+            } else {
+              throw new Error(result.error || "Failed to create order")
+            }
+          } catch (e) {
+            console.error("Order creation error:", e)
+            setError("Payment successful but order creation failed. Please contact support with payment ID: " + response.razorpay_payment_id)
+            setSaving(false)
+          }
+        },
+        prefill: {
+          name: sanitizedAddress.fullName,
+          email: sanitizedAddress.email,
+          contact: sanitizedAddress.phone
+        },
+        notes: {
+          address: `${sanitizedAddress.street}, ${sanitizedAddress.city}, ${sanitizedAddress.state} ${sanitizedAddress.postalCode}`
+        },
+        theme: {
+          color: '#f59e0b'
+        },
+        modal: {
+          ondismiss: function() {
+            setSaving(false)
+            setError("Payment cancelled. Please try again.")
+          }
+        }
+      }
+
+      const razorpay = new window.Razorpay(options)
+      razorpay.open()
       
-      // Simulate successful payment
-      clear()
-      setStep(3)
     } catch (e) {
-      setError(e.message || "Payment failed")
+      console.error("Order placement error:", e)
+      setError(e.message || "Failed to place order")
+      setSaving(false)
     }
   }
 
@@ -69,12 +250,12 @@ export default function CheckoutPage() {
             <span className="text-sm">
               {i.name} × {i.quantity}
             </span>
-            <span className="text-sm">${(i.price * i.quantity).toFixed(2)}</span>
+            <span className="text-sm">₹{(i.price * i.quantity).toFixed(2)}</span>
           </div>
         ))}
         <div className="flex items-center justify-between border-t pt-3">
           <span className="font-medium">Total</span>
-          <span className="font-semibold">${subtotal.toFixed(2)}</span>
+          <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
         </div>
       </div>
     ),
@@ -83,6 +264,19 @@ export default function CheckoutPage() {
 
   return (
     <UIProvider>
+      <Script 
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        onLoad={() => {
+          setRazorpayLoaded(true)
+          setRazorpayLoading(false)
+          setShowRetry(false)
+        }}
+        onError={() => {
+          setRazorpayLoading(false)
+          setShowRetry(true)
+          setError("Failed to load payment system.")
+        }}
+      />
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10 md:py-16">
         <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl">Checkout</h1>
@@ -92,10 +286,51 @@ export default function CheckoutPage() {
             className="mt-6 md:mt-8 space-y-4 md:space-y-6"
             onSubmit={async (e) => {
               e.preventDefault()
+              
+              // Validate form
+              const errors = {}
+              
+              if (!addr.fullName.trim()) {
+                errors.fullName = "Full name is required"
+              }
+              
+              if (addr.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.email)) {
+                errors.email = "Please enter a valid email address"
+              }
+              
+              if (!addr.phone.trim()) {
+                errors.phone = "Phone number is required"
+              } else if (!/^[0-9+\-\s()]{10,}$/.test(addr.phone)) {
+                errors.phone = "Please enter a valid phone number (numbers only)"
+              }
+              
+              if (!addr.street.trim()) {
+                errors.street = "Street address is required"
+              }
+              
+              if (!addr.city.trim()) {
+                errors.city = "City is required"
+              }
+              
+              if (!addr.state.trim()) {
+                errors.state = "State is required"
+              }
+              
+              if (!addr.postalCode.trim()) {
+                errors.postalCode = "Postal code is required"
+              } else if (!/^[0-9]{5,10}$/.test(addr.postalCode)) {
+                errors.postalCode = "Please enter a valid postal code (numbers only)"
+              }
+              
+              if (Object.keys(errors).length > 0) {
+                setValidationErrors(errors)
+                return
+              }
+              
+              setValidationErrors({})
               setSaving(true)
               await saveAddressIfNeeded()
               setSaving(false)
-              setSaved(true)
               setStep(2)
             }}
           >
@@ -103,30 +338,89 @@ export default function CheckoutPage() {
               <Input
                 label="Full name"
                 value={addr.fullName}
-                onChange={(v) => setAddr({ ...addr, fullName: v })}
-                required
+                onChange={(v) => {
+                  setAddr({ ...addr, fullName: v })
+                  if (validationErrors.fullName) {
+                    setValidationErrors({ ...validationErrors, fullName: undefined })
+                  }
+                }}
+                error={validationErrors.fullName}
+              />
+              <Input
+                label="Email address"
+                type="email"
+                value={addr.email}
+                onChange={(v) => {
+                  setAddr({ ...addr, email: v })
+                  if (validationErrors.email) {
+                    setValidationErrors({ ...validationErrors, email: undefined })
+                  }
+                }}
+                error={validationErrors.email}
               />
               <Input
                 label="Phone number"
                 value={addr.phone}
-                onChange={(v) => setAddr({ ...addr, phone: v })}
-                required
+                onChange={(v) => {
+                  // Only allow numbers, +, -, spaces, and parentheses
+                  const cleaned = v.replace(/[^0-9+\-\s()]/g, '')
+                  setAddr({ ...addr, phone: cleaned })
+                  if (validationErrors.phone) {
+                    setValidationErrors({ ...validationErrors, phone: undefined })
+                  }
+                }}
+                error={validationErrors.phone}
+                placeholder="1234567890"
               />
             </div>
             <Input
               label="Street address"
               value={addr.street}
-              onChange={(v) => setAddr({ ...addr, street: v })}
-              required
+              onChange={(v) => {
+                setAddr({ ...addr, street: v })
+                if (validationErrors.street) {
+                  setValidationErrors({ ...validationErrors, street: undefined })
+                }
+              }}
+              error={validationErrors.street}
             />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input label="City" value={addr.city} onChange={(v) => setAddr({ ...addr, city: v })} required />
-              <Input label="State" value={addr.state} onChange={(v) => setAddr({ ...addr, state: v })} required />
+              <Input 
+                label="City" 
+                value={addr.city} 
+                onChange={(v) => {
+                  setAddr({ ...addr, city: v })
+                  if (validationErrors.city) {
+                    setValidationErrors({ ...validationErrors, city: undefined })
+                  }
+                }} 
+                error={validationErrors.city}
+              />
+              <Input 
+                label="State" 
+                value={addr.state} 
+                onChange={(v) => {
+                  setAddr({ ...addr, state: v })
+                  if (validationErrors.state) {
+                    setValidationErrors({ ...validationErrors, state: undefined })
+                  }
+                }} 
+                error={validationErrors.state}
+              />
               <Input
                 label="Postal code"
                 value={addr.postalCode}
-                onChange={(v) => setAddr({ ...addr, postalCode: v })}
-                required
+                onChange={(v) => {
+                  // Only allow numbers
+                  const cleaned = v.replace(/[^0-9]/g, '')
+                  setAddr({ ...addr, postalCode: cleaned })
+                  if (validationErrors.postalCode) {
+                    setValidationErrors({ ...validationErrors, postalCode: undefined })
+                  }
+                }}
+                error={validationErrors.postalCode}
+                placeholder="123456"
+                maxLength={10}
               />
             </div>
             <label className="flex items-start gap-3 text-sm sm:text-base cursor-pointer">
@@ -170,12 +464,36 @@ export default function CheckoutPage() {
             <div className="rounded-lg border bg-card p-4 sm:p-6">
               <h2 className="font-serif text-xl sm:text-2xl">Your Order</h2>
               <div className="mt-4">{Review}</div>
-              <button
-                onClick={placeOrder}
-                className="mt-6 w-full rounded-md bg-primary px-4 py-3 sm:py-4 text-sm sm:text-base font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-              >
-                Place Order (Demo)
-              </button>
+              
+              {razorpayLoading && !razorpayLoaded && (
+                <div className="mt-6 flex items-center justify-center gap-3 p-4 rounded-md bg-secondary/50">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  <span className="text-sm text-muted-foreground">Loading payment system...</span>
+                </div>
+              )}
+              
+              {showRetry && !razorpayLoaded && (
+                <div className="mt-6 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">Payment system is taking longer than expected</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full rounded-md border border-primary px-4 py-3 text-sm sm:text-base font-medium text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              
+              {!razorpayLoading && razorpayLoaded && (
+                <button
+                  onClick={placeOrder}
+                  disabled={saving}
+                  className="mt-6 w-full rounded-md bg-primary px-4 py-3 sm:py-4 text-sm sm:text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+                >
+                  {saving ? "Placing Order..." : "Place Order"}
+                </button>
+              )}
+              
               {error && (
                 <div className="mt-4 rounded-md bg-destructive/10 p-3 sm:p-4 text-sm sm:text-base text-destructive">
                   {error}
@@ -219,16 +537,23 @@ export default function CheckoutPage() {
   )
 }
 
-function Input({ label, value, onChange, required }) {
+function Input({ label, value, onChange, type = "text", error, placeholder, maxLength }) {
   return (
     <label className="block text-sm sm:text-base">
       <span className="font-medium">{label}</span>
       <input
-        required={required}
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-md border bg-background px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className={`mt-2 w-full rounded-md border bg-background px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base placeholder:text-muted-foreground/40 placeholder:text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all ${
+          error ? 'border-destructive focus:ring-destructive/50 focus:border-destructive' : ''
+        }`}
       />
+      {error && (
+        <span className="mt-1 text-xs sm:text-sm text-destructive">{error}</span>
+      )}
     </label>
   )
 }

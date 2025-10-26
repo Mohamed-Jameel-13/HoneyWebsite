@@ -2,7 +2,8 @@
 import Link from "next/link"
 import { useUI } from "./cart-ui-context"
 import { useCart } from "../lib/cart-store"
-import { getCurrentUser, clearMockUser, initMockAuth } from "../lib/firebase"
+import { auth } from "../lib/firebase"
+import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth"
 import { useState, useEffect } from "react"
 
 export default function Navbar() {
@@ -13,22 +14,19 @@ export default function Navbar() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    initMockAuth()
-    setUser(getCurrentUser())
-    
-    // Listen for auth state changes
-    const checkAuth = () => {
-      setUser(getCurrentUser())
-    }
-    
-    window.addEventListener('storage', checkAuth)
-    return () => window.removeEventListener('storage', checkAuth)
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+    })
+    return () => unsubscribe()
   }, [])
 
-  const handleLogout = () => {
-    clearMockUser()
-    setUser(null)
-    setMobileMenuOpen(false)
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut(auth)
+      setMobileMenuOpen(false)
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
   return (
@@ -38,11 +36,11 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div aria-hidden="true" className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary flex items-center justify-center">
-              <span className="sr-only">The Golden Hive logo</span>
+              <span className="sr-only">Thaenveedu logo</span>
               <span className="text-lg sm:text-xl text-primary-foreground font-serif">🐝</span>
             </div>
             <Link href="/" className="text-lg sm:text-xl md:text-2xl font-serif font-semibold text-foreground hover:text-primary transition-colors">
-              The Golden Hive
+              Thaenveedu
             </Link>
           </div>
 
@@ -72,6 +70,29 @@ export default function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {user && (
+              <>
+                <Link
+                  href="/profile"
+                  className="hidden sm:inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
+                  aria-label="View profile"
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  <span>Profile</span>
+                </Link>
+                <Link
+                  href="/orders"
+                  className="hidden sm:inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
+                >
+                  <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                  </svg>
+                  <span>Orders</span>
+                </Link>
+              </>
+            )}
             <button
               aria-label="Open cart"
               onClick={toggleCart}
@@ -92,9 +113,6 @@ export default function Navbar() {
             </button>
             {user ? (
               <div className="hidden sm:flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {user.displayName || user.email || 'User'}
-                </span>
                 <button
                   onClick={handleLogout}
                   className="px-3 sm:px-4 py-2 rounded-md border hover:bg-secondary transition-colors text-sm sm:text-base font-medium"
@@ -149,6 +167,24 @@ export default function Navbar() {
             >
               Shop All
             </Link>
+            {user && (
+              <>
+                <Link 
+                  href="/profile" 
+                  className="block py-2 text-base font-medium hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Profile
+                </Link>
+                <Link 
+                  href="/orders" 
+                  className="block py-2 text-base font-medium hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My Orders
+                </Link>
+              </>
+            )}
             <Link 
               href="/#our-story" 
               className="block py-2 text-base font-medium hover:text-primary transition-colors"
@@ -164,10 +200,7 @@ export default function Navbar() {
               Contact
             </Link>
             {user ? (
-              <div className="sm:hidden space-y-2">
-                <div className="py-2 text-base text-muted-foreground">
-                  {user.displayName || user.email || 'User'}
-                </div>
+              <div className="sm:hidden space-y-2 border-t pt-3">
                 <button
                   onClick={handleLogout}
                   className="block w-full text-left py-2 text-base font-medium hover:text-primary transition-colors"

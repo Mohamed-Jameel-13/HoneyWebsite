@@ -58,7 +58,7 @@ export default function CartDrawer() {
                       +
                     </button>
                   </div>
-                  <span className="font-semibold">${(i.price * i.quantity).toFixed(2)}</span>
+                  <span className="font-semibold">₹{(i.price * i.quantity).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -67,7 +67,7 @@ export default function CartDrawer() {
         <div className="border-t p-4">
           <div className="flex items-center justify-between">
             <span>Subtotal</span>
-            <span className="font-semibold">${subtotal.toFixed(2)}</span>
+            <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
           </div>
           <Link
             href="/checkout"
