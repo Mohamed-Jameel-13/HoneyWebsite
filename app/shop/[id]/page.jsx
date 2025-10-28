@@ -15,11 +15,13 @@ export async function generateStaticParams() {
 }
 
 // Server component - this will be statically generated
-export default function ProductDetailPage({ params }) {
+export default async function ProductDetailPage({ params }) {
+  const { id } = await params
+  
   return (
     <UIProvider>
       <Navbar />
-      <ProductDetailContent productId={params.id} />
+      <ProductDetailContent productId={id} />
       <CartDrawer />
       <LoginModal />
     </UIProvider>

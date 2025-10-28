@@ -161,7 +161,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link
             href="/admin/orders"
             className="rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -174,6 +174,23 @@ export default function AdminDashboard() {
                 <h3 className="font-serif text-xl font-semibold">Order Requests</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   View and manage all customer orders
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/products"
+            className="rounded-lg border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="text-3xl">🍯</span>
+              </div>
+              <div>
+                <h3 className="font-serif text-xl font-semibold">Product Management</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Add, edit, or delete products
                 </p>
               </div>
             </div>

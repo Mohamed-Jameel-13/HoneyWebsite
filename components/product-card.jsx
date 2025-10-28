@@ -6,11 +6,13 @@ import { onAuthStateChanged } from "firebase/auth"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { convertUnsplashUrl } from "../lib/image-utils"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCart()
   const { openAuth } = useUI()
   const [user, setUser] = useState(null)
+  const [imageUrl, setImageUrl] = useState("/placeholder.jpg")
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -18,6 +20,16 @@ export default function ProductCard({ product }) {
     })
     return () => unsubscribe()
   }, [])
+
+  // Convert Unsplash URLs to direct image URLs
+  useEffect(() => {
+    if (product?.imageUrl) {
+      const convertedUrl = convertUnsplashUrl(product.imageUrl)
+      setImageUrl(convertedUrl || "/placeholder.jpg")
+    } else {
+      setImageUrl("/placeholder.jpg")
+    }
+  }, [product?.imageUrl])
 
   const handleAddToCart = (e) => {
     e.preventDefault()
@@ -36,14 +48,19 @@ export default function ProductCard({ product }) {
   return (
     <Link href={`/shop/${product.id}`} className="group rounded-lg border bg-card text-card-foreground overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer h-full">
       <div className="relative aspect-[4/3] overflow-hidden bg-muted flex-shrink-0">
-        <Image
-          src={product.imageUrl || "/placeholder.jpg"}
-          alt={`${product.name} honey jar`}
-          fill
-          className="object-cover transition-all duration-500 group-hover:scale-110"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          priority
-        />
+        {imageUrl && (
+          <Image
+            src={imageUrl}
+            alt={`${product.name} honey jar`}
+            fill
+            className="object-cover transition-all duration-500 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            priority
+            onError={(e) => {
+              e.currentTarget.src = "/placeholder.jpg"
+            }}
+          />
+        )}
       </div>
       <div className="p-4 sm:p-5 md:p-6 flex-1 flex flex-col">
         <h3 className="font-serif text-lg sm:text-xl md:text-2xl line-clamp-1 min-h-[2rem] sm:min-h-[2.5rem]">{product.name}</h3>

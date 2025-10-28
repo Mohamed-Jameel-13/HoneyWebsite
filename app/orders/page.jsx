@@ -4,17 +4,20 @@ import { useRouter } from "next/navigation"
 import { auth } from "../../lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 import { getUserOrders } from "../../lib/order-service"
+import { hasUserReviewedProduct } from "../../lib/review-service"
 import Navbar from "../../components/navbar"
 import Footer from "../../components/footer"
 import CartDrawer from "../../components/cart-drawer"
 import LoginModal from "../../components/login-modal"
 import { UIProvider } from "../../components/cart-ui-context"
+import Link from "next/link"
 
 export default function OrdersPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [reviewedProducts, setReviewedProducts] = useState(new Set())
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -29,6 +32,20 @@ export default function OrdersPage() {
       const result = await getUserOrders(currentUser.uid)
       if (result.success) {
         setOrders(result.orders)
+        
+        // Check which products have been reviewed
+        const reviewed = new Set()
+        for (const order of result.orders) {
+          if (order.status === 'delivered' && order.items) {
+            for (const item of order.items) {
+              const hasReviewed = await hasUserReviewedProduct(currentUser.uid, item.id)
+              if (hasReviewed) {
+                reviewed.add(item.id)
+              }
+            }
+          }
+        }
+        setReviewedProducts(reviewed)
       }
       setLoading(false)
     })
@@ -126,8 +143,27 @@ export default function OrdersPage() {
                           Qty: {item.quantity} × ₹{item.price?.toFixed(2)}
                         </p>
                       </div>
-                      <div className="font-semibold">
-                        ₹{((item.price || 0) * (item.quantity || 0)).toFixed(2)}
+                      <div className="flex items-center gap-3">
+                        <div className="font-semibold">
+                          ₹{((item.price || 0) * (item.quantity || 0)).toFixed(2)}
+                        </div>
+                        
+                        {/* Review Button - Only show for delivered orders */}
+                        {order.status === 'delivered' && (
+                          reviewedProducts.has(item.id) ? (
+                            <div className="text-xs text-green-600 font-medium flex items-center gap-1">
+                              <span>✓</span>
+                              <span className="hidden sm:inline">Reviewed</span>
+                            </div>
+                          ) : (
+                            <Link
+                              href={`/shop/${item.id}#reviews`}
+                              className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+                            >
+                              Write Review
+                            </Link>
+                          )
+                        )}
                       </div>
                     </div>
                   ))}

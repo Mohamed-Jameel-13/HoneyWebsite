@@ -7,23 +7,27 @@ A modern, production-ready e-commerce platform for artisanal honey products. Bui
 ## ✨ Features
 
 ### 🎨 Beautiful UI/UX
+
 - **100vh Hero Section** - Full-viewport honey drizzle background on desktop
 - **Scroll-triggered animations** - Best Sellers section appears smoothly on scroll
 - **Fully Responsive Design** - Optimized for mobile, tablet, mini iPhone, and desktop
 - **Modern Design System** - Honey-gold color palette with professional typography
 
 ### 🛒 E-Commerce Functionality
+
 - **Product Catalog** - 11 unique honey varieties with real product images
 - **Shopping Cart** - Smooth drawer with quantity controls
 - **Secure Checkout** - Razorpay payment integration
 - **User Authentication** - Firebase Auth with Google Sign-In and Phone OTP
 
 ### 📱 Mobile-First Design
+
 - **Responsive Navigation** - Mobile hamburger menu with smooth transitions
 - **Touch-Optimized** - Large touch targets and mobile-friendly interactions
 - **Performance Optimized** - Lazy loading images and efficient rendering
 
 ### 🎯 Key Sections
+
 1. **Hero** - Full-screen honey drizzle with dual CTAs
 2. **Best Sellers** - Featured products with scroll-reveal animation
 3. **Benefits** - Three key health benefits with icons
@@ -35,7 +39,8 @@ A modern, production-ready e-commerce platform for artisanal honey products. Bui
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or pnpm
 
 ### Installation
@@ -145,6 +150,7 @@ RAZORPAY_KEY_SECRET=your_razorpay_secret
 ## 📱 Responsive Design Features
 
 ### Mobile (< 640px)
+
 - Single column layouts
 - Hamburger menu navigation
 - Full-width buttons and forms
@@ -152,12 +158,14 @@ RAZORPAY_KEY_SECRET=your_razorpay_secret
 - Cart icon in navbar instead of text
 
 ### Tablet (640px - 1024px)
+
 - Two-column product grids
 - Expanded navigation menu
 - Larger typography scale
 - Optimized image sizing
 
 ### Desktop (≥ 1024px)
+
 - Four-column product grids
 - Full navigation menu
 - 100vh hero section
@@ -168,19 +176,19 @@ RAZORPAY_KEY_SECRET=your_razorpay_secret
 
 All products now use high-quality Unsplash images:
 
-| Product | Image Source |
-|---------|-------------|
-| Wildflower Honey | Unsplash honey jars |
-| Clover Honey | Unsplash honey collection |
-| Manuka Honey | Unsplash artisanal honey |
-| Acacia Honey | Unsplash honey bottles |
-| Lavender Honey | Unsplash honey varieties |
-| Eucalyptus Honey | Unsplash honey products |
-| Orange Blossom Honey | Unsplash honey citrus |
-| Buckwheat Honey | Unsplash dark honey |
-| Sage Honey | Unsplash herbal honey |
-| Thyme Honey | Unsplash Greek honey |
-| Heather Honey | Unsplash Scottish honey |
+| Product              | Image Source              |
+| -------------------- | ------------------------- |
+| Wildflower Honey     | Unsplash honey jars       |
+| Clover Honey         | Unsplash honey collection |
+| Manuka Honey         | Unsplash artisanal honey  |
+| Acacia Honey         | Unsplash honey bottles    |
+| Lavender Honey       | Unsplash honey varieties  |
+| Eucalyptus Honey     | Unsplash honey products   |
+| Orange Blossom Honey | Unsplash honey citrus     |
+| Buckwheat Honey      | Unsplash dark honey       |
+| Sage Honey           | Unsplash herbal honey     |
+| Thyme Honey          | Unsplash Greek honey      |
+| Heather Honey        | Unsplash Scottish honey   |
 
 ## 🚢 Deployment
 
@@ -220,6 +228,7 @@ npm run start
 ## 🎨 Design System
 
 ### Colors
+
 - **Primary (Honey Gold):** `#FFB300`
 - **Background:** `#F8F4E3` (Off-white)
 - **Foreground:** `#2B1A0A` (Deep brown)
@@ -227,11 +236,13 @@ npm run start
 - **Secondary:** `#EDE6D2`
 
 ### Typography
+
 - **Serif (Headings):** Lora
 - **Sans (Body):** Inter
 - **Font Scale:** Responsive from mobile to desktop
 
 ### Spacing
+
 - Mobile: 4, 6, 8, 12, 16, 20px
 - Desktop: 6, 8, 12, 16, 20, 24, 32px
 
@@ -256,9 +267,9 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-For support, email hello@goldenhive.com or visit our contact page.
+For support, email
+thaenveedu@gmail.com or visit our contact page.
 
 ---
 
 **Built with 🍯 by The Golden Hive Team**
-

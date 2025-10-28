@@ -177,12 +177,8 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Email Us</h3>
                     <p className="text-muted-foreground">
-                      <a href="mailto:hello@goldenhive.com" className="hover:text-primary transition-colors">
-                        hello@goldenhive.com
-                      </a>
-                      <br />
-                      <a href="mailto:support@goldenhive.com" className="hover:text-primary transition-colors">
-                        support@goldenhive.com
+                      <a href="mailto:thaenveedu@gmail.com" className="hover:text-primary transition-colors">
+                        thaenveedu@gmail.com
                       </a>
                     </p>
                   </div>

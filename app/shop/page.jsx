@@ -5,6 +5,7 @@ import CartDrawer from "../../components/cart-drawer"
 import LoginModal from "../../components/login-modal"
 import { UIProvider } from "../../components/cart-ui-context"
 import ProductCard from "../../components/product-card"
+import { getAllProducts } from "../../lib/product-service"
 
 const fallback = [
   {
@@ -39,10 +40,27 @@ const fallback = [
 
 export default function ShopPage() {
   const [products, setProducts] = useState(fallback)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Use fallback products for frontend-only deployment
-    setProducts(fallback)
+    // Try to fetch products from Firestore, fallback to hardcoded if it fails
+    const fetchProducts = async () => {
+      try {
+        const result = await getAllProducts()
+        if (result.success && result.products.length > 0) {
+          setProducts(result.products)
+        } else {
+          setProducts(fallback)
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error)
+        setProducts(fallback)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchProducts()
   }, [])
 
   return (
@@ -55,11 +73,17 @@ export default function ShopPage() {
             Explore our complete collection of artisanal honey, each variety hand-selected and sustainably harvested
           </p>
         </div>
-        <div className="mt-8 md:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="mt-8 md:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        )}
       </main>
       <CartDrawer />
       <LoginModal />

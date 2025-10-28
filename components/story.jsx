@@ -29,13 +29,15 @@ export default function Story() {
           </div>
         </div>
         <div className="order-1 md:order-2">
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-            <img
-              src="/authentic-beekeeper-with-honeycomb-frame.jpg"
-              alt="Beekeeper holding a honeycomb frame"
-              className="w-full h-auto object-cover aspect-[4/3]"
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
+            <iframe
+              className="w-full h-full object-cover"
+              src="https://www.youtube.com/embed/Cz7MKeQktvo?si=9OVstjeBKePsrNgy&autoplay=1&mute=1&loop=1&playlist=Cz7MKeQktvo&controls=0&showinfo=0&rel=0&modestbranding=1"
+              title="Thaenveedu Forest Honey - Our Story"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
           </div>
         </div>
       </div>
