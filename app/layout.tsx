@@ -17,9 +17,8 @@ const lora = Lora({
 })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "Thaenveedu",
+  description: "Pure, raw honey sourced from sustainable apiaries. Discover our premium collection of Wildflower, Clover, Manuka, and Acacia honey - 100% natural with no artificial additives.",
 }
 
 export default function RootLayout({
