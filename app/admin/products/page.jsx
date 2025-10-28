@@ -5,6 +5,7 @@ import { auth } from "../../../lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 import { getAllProducts, addProduct, updateProduct, updateProductPrice, deleteProduct } from "../../../lib/product-service"
 import Link from "next/link"
+import { toast } from "sonner"
 
 export default function AdminProducts() {
   const router = useRouter()
@@ -106,22 +107,29 @@ export default function AdminProducts() {
   }
 
   const handleDeleteProduct = async (productId, productName) => {
-    if (!confirm(`Are you sure you want to delete "${productName}"?`)) {
-      return
-    }
+    // Show confirmation toast with action buttons
+    toast(`Are you sure you want to delete "${productName}"?`, {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          setLoading(true)
+          const result = await deleteProduct(productId)
 
-    setLoading(true)
-    const result = await deleteProduct(productId)
-
-    if (result.success) {
-      setMessage({ type: "success", text: "Product deleted successfully!" })
-      await loadProducts()
-    } else {
-      setMessage({ type: "error", text: result.error })
-    }
-    
-    setLoading(false)
-    setTimeout(() => setMessage(null), 3000)
+          if (result.success) {
+            toast.success("Product deleted successfully!")
+            await loadProducts()
+          } else {
+            toast.error(result.error || "Failed to delete product")
+          }
+          
+          setLoading(false)
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    })
   }
 
   const openEditModal = (product) => {
