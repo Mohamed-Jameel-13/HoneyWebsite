@@ -1,46 +1,30 @@
 "use client"
 import { useEffect, useState, useRef } from "react"
 import ProductCard from "../../components/product-card"
-
-const fallback = [
-  {
-    id: "wildflower",
-    name: "Wildflower Honey",
-    description: "Floral and balanced—our most versatile classic.",
-    price: 14.0,
-    imageUrl: "/Wildflowerhoney.webp",
-  },
-  {
-    id: "clover",
-    name: "Clover Honey",
-    description: "Light, bright sweetness with a gentle finish.",
-    price: 12.0,
-    imageUrl: "/Honey1.avif",
-  },
-  {
-    id: "manuka",
-    name: "Manuka Honey",
-    description: "Rare, robust, and richly textured—sourced with care.",
-    price: 28.0,
-    imageUrl: "/Honey2.avif",
-  },
-  {
-    id: "acacia",
-    name: "Acacia Honey",
-    description: "Delicate, clear, and slow to crystallize.",
-    price: 18.0,
-    imageUrl: "/Acacia-Honey-.webp",
-  },
-]
+import { getAllProducts } from "../../lib/product-service"
 
 export default function FeaturedProducts() {
-  const [products, setProducts] = useState(fallback)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
   const sectionRef = useRef(null)
 
   useEffect(() => {
-    // Use fallback products for frontend-only deployment
-    setProducts(fallback)
+    // Fetch products from Firestore (admin-added only)
+    const fetchProducts = async () => {
+      try {
+        const result = await getAllProducts()
+        if (result.success) {
+          setProducts(result.products)
+        }
+      } catch (error) {
+        console.error("Error fetching featured products:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchProducts()
   }, [])
 
   useEffect(() => {
@@ -82,21 +66,31 @@ export default function FeaturedProducts() {
           Discover our most loved varieties, hand-selected by our beekeepers
         </p>
       </div>
-      <div className="mt-6 md:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-        {products.slice(0, 4).map((p, index) => (
-          <div 
-            key={p.id}
-            className={`transition-all duration-500 ${
-              isVisible 
-                ? 'opacity-100 translate-y-0' 
-                : 'opacity-0 translate-y-10'
-            }`}
-            style={{ transitionDelay: `${index * 100}ms` }}
-          >
-            <ProductCard product={p} />
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[300px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      ) : products.length > 0 ? (
+        <div className="mt-6 md:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+          {products.slice(0, 4).map((p, index) => (
+            <div 
+              key={p.id}
+              className={`transition-all duration-500 ${
+                isVisible 
+                  ? 'opacity-100 translate-y-0' 
+                  : 'opacity-0 translate-y-10'
+              }`}
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
+              <ProductCard product={p} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
+          <p className="text-lg text-muted-foreground">No products available yet</p>
+        </div>
+      )}
     </section>
   )
 }

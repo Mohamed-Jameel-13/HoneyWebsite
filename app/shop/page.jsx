@@ -7,54 +7,20 @@ import { UIProvider } from "../../components/cart-ui-context"
 import ProductCard from "../../components/product-card"
 import { getAllProducts } from "../../lib/product-service"
 
-const fallback = [
-  {
-    id: "wildflower",
-    name: "Wildflower Honey",
-    description: "Floral and balanced—our most versatile classic. Perfect for everyday use.",
-    price: 14.0,
-    imageUrl: "/Wildflowerhoney.webp",
-  },
-  {
-    id: "clover",
-    name: "Clover Honey",
-    description: "Light, bright sweetness with a gentle finish. Ideal for tea and baking.",
-    price: 12.0,
-    imageUrl: "/Honey1.avif",
-  },
-  {
-    id: "manuka",
-    name: "Manuka Honey",
-    description: "Rare, robust, and richly textured—sourced with care from New Zealand.",
-    price: 28.0,
-    imageUrl: "/Honey2.avif",
-  },
-  {
-    id: "acacia",
-    name: "Acacia Honey",
-    description: "Delicate, clear, and slow to crystallize. Light and mild flavor.",
-    price: 18.0,
-    imageUrl: "/Acacia-Honey-.webp",
-  },
-]
-
 export default function ShopPage() {
-  const [products, setProducts] = useState(fallback)
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Try to fetch products from Firestore, fallback to hardcoded if it fails
+    // Fetch products from Firestore (admin-added only)
     const fetchProducts = async () => {
       try {
         const result = await getAllProducts()
-        if (result.success && result.products.length > 0) {
+        if (result.success) {
           setProducts(result.products)
-        } else {
-          setProducts(fallback)
         }
       } catch (error) {
         console.error("Error fetching products:", error)
-        setProducts(fallback)
       } finally {
         setLoading(false)
       }
@@ -77,11 +43,16 @@ export default function ShopPage() {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : (
+        ) : products.length > 0 ? (
           <div className="mt-8 md:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
             {products.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+            <p className="text-xl text-muted-foreground mb-2">No products available yet</p>
+            <p className="text-sm text-muted-foreground">Please check back later or contact us for more information.</p>
           </div>
         )}
       </main>
